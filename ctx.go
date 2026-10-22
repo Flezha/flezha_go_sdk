@@ -363,45 +363,14 @@ func (inv *invocation) emit(value any, o emitOptions) error {
 // inter-tasklet hands it to the core as the pass's handoff; in a flow each
 // consumer's own edge transforms, keys and times it producer-side.
 func (inv *invocation) release(ch *channelSpec, value any, key *string, metadata [][2]string) error {
+	var err error
 	if inv.class.spec.steps {
-		consumer := -1
-		if len(ch.consumers) > 0 {
-			consumer = ch.consumers[0].tasklet
-		} else if ch.derivedKind == "inter_task" && ch.producer != nil {
-			consumer = *ch.producer
-		}
-		if consumer >= 0 {
-			payload, err := edgePayload(ch, value)
-			if err != nil {
-				return err
-			}
-			inv.outputs = append(inv.outputs, codec.Output{Channel: uint32(ch.index), Consumer: uint32(consumer), Payload: payload})
-		}
+		err = inv.releaseStep(ch, value)
 	} else {
-		for _, edge := range ch.consumers {
-			consumer := inv.class.spec.tasklets[edge.tasklet].def
-			for _, v := range applyTransforms(edge.transforms, value) {
-				resolved := key
-				if resolved == nil && edge.keyBy != nil {
-					k := edge.keyBy(v)
-					resolved = &k
-				}
-				resolved = inv.orCellKey(resolved)
-				var eventTime *uint64
-				if consumer.hasEventTime {
-					t := consumer.eventTime(v)
-					eventTime = &t
-				}
-				payload, err := edgePayload(ch, v)
-				if err != nil {
-					return err
-				}
-				inv.outputs = append(inv.outputs, codec.Output{
-					Channel: uint32(ch.index), Consumer: uint32(edge.tasklet), Key: resolved,
-					EventTime: eventTime, Metadata: metadata, Payload: payload,
-				})
-			}
-		}
+		err = inv.releaseEdges(ch, value, key, metadata)
+	}
+	if err != nil {
+		return err
 	}
 	if ch.sink != nil {
 		resolved := inv.orCellKey(key)
@@ -426,6 +395,56 @@ func (inv *invocation) release(ch *channelSpec, value any, key *string, metadata
 				return err
 			}
 			inv.outputs = append(inv.outputs, codec.Output{Plugin: true, PluginChannel: ch.name, Key: resolved, Metadata: metadata, Payload: payload})
+		}
+	}
+	return nil
+}
+
+// releaseStep hands a steps value, untransformed, to its first consumer, or to
+// the core as the pass's handoff on a derived inter-tasklet terminal.
+func (inv *invocation) releaseStep(ch *channelSpec, value any) error {
+	consumer := -1
+	if len(ch.consumers) > 0 {
+		consumer = ch.consumers[0].tasklet
+	} else if ch.derivedKind == "inter_task" && ch.producer != nil {
+		consumer = *ch.producer
+	}
+	if consumer < 0 {
+		return nil
+	}
+	payload, err := edgePayload(ch, value)
+	if err != nil {
+		return err
+	}
+	inv.outputs = append(inv.outputs, codec.Output{Channel: uint32(ch.index), Consumer: uint32(consumer), Payload: payload})
+	return nil
+}
+
+// releaseEdges sends a flow value down each consumer's edge, which transforms,
+// keys and times it.
+func (inv *invocation) releaseEdges(ch *channelSpec, value any, key *string, metadata [][2]string) error {
+	for _, edge := range ch.consumers {
+		consumer := inv.class.spec.tasklets[edge.tasklet].def
+		for _, v := range applyTransforms(edge.transforms, value) {
+			resolved := key
+			if resolved == nil && edge.keyBy != nil {
+				k := edge.keyBy(v)
+				resolved = &k
+			}
+			resolved = inv.orCellKey(resolved)
+			var eventTime *uint64
+			if consumer.hasEventTime {
+				t := consumer.eventTime(v)
+				eventTime = &t
+			}
+			payload, err := edgePayload(ch, v)
+			if err != nil {
+				return err
+			}
+			inv.outputs = append(inv.outputs, codec.Output{
+				Channel: uint32(ch.index), Consumer: uint32(edge.tasklet), Key: resolved,
+				EventTime: eventTime, Metadata: metadata, Payload: payload,
+			})
 		}
 	}
 	return nil

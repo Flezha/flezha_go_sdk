@@ -200,27 +200,9 @@ func (d *dispatcher) answer(a codec.Activation) (result codec.Result) {
 	switch a.Kind {
 	case codec.KindWork:
 		return d.runWork(a, class, node)
-	case codec.KindRestoreFold:
-		var state any
-		if state, err = restoreFold(node.def, a.Restore, a.CellKey); err == nil {
-			class.setState(node, a.Relay, a.CellKey, state)
-			return codec.Result{Token: a.Token, Outcome: codec.OutcomeRestored}
-		}
-	case codec.KindSnapshotRequest, codec.KindLiveStateRead:
-		var body []byte
-		if body, err = node.def.encodeState(class.stateOf(node, a.Relay, a.CellKey)); err == nil {
-			outcome := codec.OutcomeStateJSON
-			if a.Kind == codec.KindSnapshotRequest {
-				outcome = codec.OutcomeSnapshot
-			}
-			return codec.Result{Token: a.Token, Outcome: outcome, Bytes: body}
-		}
-	case codec.KindApplyState:
-		var state any
-		if state, err = node.def.decodeState(a.StateJSON, nil); err == nil {
-			class.setState(node, a.Relay, a.CellKey, state)
-			return codec.Result{Token: a.Token, Outcome: codec.OutcomeStateApplied}
-		}
+	case codec.KindRestoreFold, codec.KindSnapshotRequest, codec.KindLiveStateRead, codec.KindApplyState:
+		result, err = answerState(a, class, node)
+		return result
 	case codec.KindKeyRequest:
 		return codec.Result{Token: a.Token, Outcome: codec.OutcomePrepared, Prepared: prepare(class, a.KeyRequest)}
 	case codec.KindCompensateRun:
@@ -231,7 +213,37 @@ func (d *dispatcher) answer(a codec.Activation) (result codec.Result) {
 	default:
 		return failed(a.Token, fmt.Sprintf("unknown activation kind %d", a.Kind), true)
 	}
-	return result
+}
+
+// answerState answers the activations that rebuild, read or replace a cell's
+// state.
+func answerState(a codec.Activation, class *registeredClass, node *taskNode) (codec.Result, error) {
+	switch a.Kind {
+	case codec.KindRestoreFold:
+		state, err := restoreFold(node.def, a.Restore, a.CellKey)
+		if err != nil {
+			return codec.Result{}, err
+		}
+		class.setState(node, a.Relay, a.CellKey, state)
+		return codec.Result{Token: a.Token, Outcome: codec.OutcomeRestored}, nil
+	case codec.KindApplyState:
+		state, err := node.def.decodeState(a.StateJSON, nil)
+		if err != nil {
+			return codec.Result{}, err
+		}
+		class.setState(node, a.Relay, a.CellKey, state)
+		return codec.Result{Token: a.Token, Outcome: codec.OutcomeStateApplied}, nil
+	default:
+		body, err := node.def.encodeState(class.stateOf(node, a.Relay, a.CellKey))
+		if err != nil {
+			return codec.Result{}, err
+		}
+		outcome := codec.OutcomeStateJSON
+		if a.Kind == codec.KindSnapshotRequest {
+			outcome = codec.OutcomeSnapshot
+		}
+		return codec.Result{Token: a.Token, Outcome: outcome, Bytes: body}, nil
+	}
 }
 
 // restoreFold is the declared starting state, the snapshot when there is one,

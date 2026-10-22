@@ -70,11 +70,6 @@ func defineAs[I, S, O any](t Tasklet[I, S, O], spec Spec, name string) *definiti
 		inType: typeOf[I](), outType: typeOf[O](), stateType: typeOf[S](),
 		decodeIn: decodeJSONInto[I], decodeOut: decodeJSONInto[O],
 	}
-	fail := func(err error) {
-		if d.err == nil {
-			d.err = err
-		}
-	}
 
 	d.initial = func(*string) any { var s S; return s }
 	if h, ok := any(t).(initStateHook[S]); ok {
@@ -87,9 +82,6 @@ func defineAs[I, S, O any](t Tasklet[I, S, O], spec Spec, name string) *definiti
 		changes = h.Changes()
 	}
 	d.journals = len(changes) > 0
-	if d.journals && d.stateType == typeOf[NoState]() {
-		fail(refusal("topology.change_without_state", map[string]any{"tasklet": name}))
-	}
 	names := map[reflect.Type]string{}
 	types := map[string]reflect.Type{}
 	for changeName, proto := range changes {
@@ -105,13 +97,18 @@ func defineAs[I, S, O any](t Tasklet[I, S, O], spec Spec, name string) *definiti
 		d.hasCellsFor = true
 		d.cellsFor = func(in any) []string { return h.CellsFor(as[I](in)) }
 	}
-	migrateState, hasMigrateState := any(t).(migrateStateHook[S])
-	migrateChange, hasMigrateChange := any(t).(migrateChangeHook[S])
-	d.migrates = hasMigrateState || hasMigrateChange
+	defineCalls(d, t, names)
+	defineRecords(d, t, types)
+	checkDefinition[S](d)
+	return d
+}
 
+// defineCalls sets the hooks the dispatcher calls with a context: Run, and
+// OnTimer and Compensate when the tasklet implements them.
+func defineCalls[I, S, O any](d *definition, t Tasklet[I, S, O], names map[reflect.Type]string) {
 	// The context a hook receives, and the state it leaves behind.
 	invoke := func(inv *invocation, body func(*Ctx[S, O]) error) error {
-		ctx := &Ctx[S, O]{inv: inv, state: as[S](inv.state), names: names, tasklet: name}
+		ctx := &Ctx[S, O]{inv: inv, state: as[S](inv.state), names: names, tasklet: d.name}
 		defer func() { inv.state = ctx.state }()
 		if err := body(ctx); err != nil {
 			return err
@@ -141,6 +138,15 @@ func defineAs[I, S, O any](t Tasklet[I, S, O], spec Spec, name string) *definiti
 			return invoke(inv, func(ctx *Ctx[S, O]) error { return h.Compensate(outputs, ctx) })
 		}
 	}
+}
+
+// defineRecords sets how the state and its change records are written and
+// read back, through the migration hooks for a record of an older version.
+func defineRecords[I, S, O any](d *definition, t Tasklet[I, S, O], types map[string]reflect.Type) {
+	name := d.name
+	migrateState, hasMigrateState := any(t).(migrateStateHook[S])
+	migrateChange, hasMigrateChange := any(t).(migrateChangeHook[S])
+	d.migrates = hasMigrateState || hasMigrateChange
 
 	d.encodeState = func(state any) ([]byte, error) {
 		out, err := encodeJSON(state)
@@ -183,21 +189,31 @@ func defineAs[I, S, O any](t Tasklet[I, S, O], spec Spec, name string) *definiti
 		change.ApplyTo(&s)
 		return s, nil
 	}
-
 	d.decodeChange = func(body []byte) (any, error) { return decodeChange[S](name, types, body) }
+}
 
+// checkDefinition records the first refusal the declaration earns.
+func checkDefinition[S any](d *definition) {
+	fail := func(err error) {
+		if d.err == nil {
+			d.err = err
+		}
+	}
+	tasklet := map[string]any{"tasklet": d.name}
+	if d.journals && d.stateType == typeOf[NoState]() {
+		fail(refusal("topology.change_without_state", tasklet))
+	}
 	// A state that cannot be encoded cannot be restored, and the first anyone
 	// would learn of it is a restart.
 	if _, err := encodeJSON(*new(S)); err != nil {
-		fail(unrepresentable(name, err))
+		fail(unrepresentable(d.name, err))
 	}
-	if spec.LogicalClock && d.hasEventTime {
-		fail(refusal("topology.two_clocks", map[string]any{"tasklet": name}))
+	if d.spec.LogicalClock && d.hasEventTime {
+		fail(refusal("topology.two_clocks", tasklet))
 	}
-	if spec.CellKeys != nil && len(spec.CellKeys) == 0 {
-		fail(refusal("topology.static_tasklet_without_cell_keys", map[string]any{"tasklet": name}))
+	if d.spec.CellKeys != nil && len(d.spec.CellKeys) == 0 {
+		fail(refusal("topology.static_tasklet_without_cell_keys", tasklet))
 	}
-	return d
 }
 
 // changeRecord is one change as its record holds it: the listed name, never

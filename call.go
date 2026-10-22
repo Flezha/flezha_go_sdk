@@ -71,7 +71,14 @@ func Call[Req, Ans any](s Stream[Req], spec CallSpec) Stream[Response[Req, Ans]]
 	if err != nil {
 		b.fail(err)
 	}
-	entry := b.entry(response, "custom", func(payload []byte) (any, error) {
+	entry := b.entry(response, "custom", decodeResponse[Req, Ans](decodeRequest, decodeAnswer))
+	return Stream[Response[Req, Ans]]{b: b, from: source{entry: entry}}
+}
+
+// decodeResponse reads one Response channel payload: the request the call
+// sent, and the answer or the error the call ended in.
+func decodeResponse[Req, Ans any](decodeRequest, decodeAnswer func([]byte) (any, error)) func([]byte) (any, error) {
+	return func(payload []byte) (any, error) {
 		parts, err := native.ResponseDecode(payload)
 		if err != nil {
 			return nil, err
@@ -91,6 +98,5 @@ func Call[Req, Ans any](s Stream[Req], spec CallSpec) Stream[Response[Req, Ans]]
 		}
 		out.Value = as[Ans](answer)
 		return out, nil
-	})
-	return Stream[Response[Req, Ans]]{b: b, from: source{entry: entry}}
+	}
 }
