@@ -3,6 +3,7 @@ package flezha_test
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -37,5 +38,44 @@ func TestAMissingLibraryNamesIt(t *testing.T) {
 	out, err := cmd.CombinedOutput()
 	if err == nil || !strings.Contains(string(out), "flz_core_ffi") {
 		t.Fatalf("a link with no core library must fail naming flz_core_ffi: %v\n%s", err, out)
+	}
+}
+
+// Every example is a module of its own whose go.mod names the SDK by its
+// released version, so each is vetted and its tests run against this checkout
+// as its README runs it before the module is published: through a workspace
+// that replaces that version with this module.
+func TestEveryExampleBuildsAndPassesItsTestsAgainstThisModule(t *testing.T) {
+	sdk, err := filepath.Abs(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	examples, err := filepath.Glob("examples/*/go.mod")
+	if err != nil || len(examples) == 0 {
+		t.Fatalf("no example modules found: %v", err)
+	}
+	for _, mod := range examples {
+		dir := filepath.Dir(mod)
+		t.Run(filepath.Base(dir), func(t *testing.T) {
+			work := t.TempDir()
+			for _, args := range [][]string{
+				{"work", "init", filepath.Join(sdk, dir)},
+				{"work", "edit", "-replace", "github.com/flezha/flezha_go_sdk=" + sdk},
+			} {
+				cmd := exec.Command("go", args...)
+				cmd.Dir = work
+				if out, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, out)
+				}
+			}
+			for _, args := range [][]string{{"vet", "./..."}, {"test", "./..."}} {
+				cmd := exec.Command("go", args...)
+				cmd.Dir = dir
+				cmd.Env = append(os.Environ(), "GOWORK="+filepath.Join(work, "go.work"))
+				if out, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("go %s in %s: %v\n%s", strings.Join(args, " "), dir, err, out)
+				}
+			}
+		})
 	}
 }

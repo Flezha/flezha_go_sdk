@@ -1,48 +1,59 @@
-// The echo relay: each message on "in" leaves on "out" behind "echo: ".
-//
-//	go run ./examples/echo                 # a runner on namespace "default"
-//	flz relay start echo --id my_echo
-//	flz relay send my_echo --text 'hello world' --await 2000
+// The runner: a process that connects to the controller and serves your
+// relays. Register every relay you want served before Start; one runner can
+// serve several, and the same call takes a steps relay.
 package main
 
 import (
 	"log"
+	"os"
 
 	flezha "github.com/flezha/flezha_go_sdk"
 )
 
-// Echo is a processing stage of the relay's graph, run once per message. It
-// keeps no state and emits through its context, the one way a value leaves a
-// tasklet; where the value goes is the relay's to decide.
-type Echo struct{}
-
-func (Echo) Spec() flezha.Spec { return flezha.Spec{Name: "echo"} }
-
-func (Echo) Run(in string, ctx *flezha.Ctx[flezha.NoState, string]) error {
-	return ctx.Emit("echo: " + in)
-}
-
-// EchoRelay is the deployable unit: the entry channel a message arrives on, the
-// tasklet it passes through and the channel its result leaves on. The entry
-// reads text, so the tasklet is handed a string.
-type EchoRelay struct{}
-
-func (EchoRelay) Spec() flezha.RelaySpec { return flezha.RelaySpec{FactoryID: "echo"} }
-
-func (EchoRelay) Channels(c *flezha.ChannelBuilder) {
-	in := flezha.Input[string](c, "in", flezha.InputOptions{Codec: flezha.Text})
-	flezha.Into(in, Echo{}).Output("out")
-}
-
 func main() {
-	runner, err := flezha.CreateRunner("default")
+	namespace := "default"
+	if len(os.Args) > 1 {
+		namespace = os.Args[1]
+	}
+
+	runner, err := flezha.CreateRunner(namespace)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := runner.RegisterFactory(EchoRelay{}); err != nil {
+	if err := runner.RegisterFactory(EchoRelay{}); err != nil { // the relays this runner serves
 		log.Fatal(err)
 	}
-	if err := runner.Run(); err != nil {
+	// Run is Start followed by AwaitTermination. Splitting them leaves room for
+	// the calls below, and still blocks until shutdown.
+	if err := runner.Start(); err != nil { // connects to the controller
+		log.Fatal(err)
+	}
+
+	// Everything `flz relay` and `flz plugin` do is also a method of Control,
+	// and Send hands a message to a relay. Uncomment to drive this namespace
+	// from the application instead of from a terminal:
+	//
+	// control := runner.Control()
+	// if _, err := control.StartRelay("echo", "my_echo", nil, nil); err != nil {
+	// 	log.Fatal(err)
+	// }
+	// _, err = control.EnablePlugin("writer", "relay_file_output",
+	// 	map[string]any{"path": "echo-out.txt"}, false, "", nil)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// if _, err := control.BindPlugin("writer", "my_echo", []any{[]any{"on_output", map[string]any{}}}, ""); err != nil {
+	// 	log.Fatal(err)
+	// }
+	// if _, err := runner.Send("my_echo", "in", []byte("hello world"), flezha.MsgID("hello-1")); err != nil {
+	// 	log.Fatal(err)
+	// }
+	//
+	// docs/public/topics/core/sending_and_calling.md covers sending. An
+	// enforced controller refuses all of it until
+	// `flz role bind runner@default app default`.
+
+	if err := runner.AwaitTermination(); err != nil {
 		log.Fatal(err)
 	}
 }

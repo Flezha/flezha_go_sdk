@@ -1,0 +1,4 @@
+/agentdesk
+/go.work
+/go.work.sum
+controller/plugins/*.fpz
