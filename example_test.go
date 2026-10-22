@@ -88,12 +88,31 @@ func ExampleShortRelay() {
 	// EUR/USD
 }
 
+// The runner a program serves its relay types with; compiled here, run
+// against a controller.
+func Example_runner() {
+	run := func() error {
+		runner, err := flezha.CreateRunner("trading")
+		if err != nil {
+			return err
+		}
+		if err := runner.RegisterFactory(Orders{}); err != nil {
+			return err
+		}
+		return runner.Run()
+	}
+	_ = run
+}
+
 func Example_harness() {
 	h, err := flezhatest.New[Order, Book, int](Totals{})
 	if err != nil {
 		panic(err)
 	}
-	out, _ := h.Feed(Order{Pair: "EUR/USD", Qty: 4}, 0, false)
+	out, err := h.Feed(Order{Pair: "EUR/USD", Qty: 4}, 0, false)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(out.Outputs, h.State().Sum, h.ReplayEquals())
 	// Output: [4] 4 <nil>
 }

@@ -326,3 +326,27 @@ func TestAShortFormEmitsOnTrueAndSkipsOnFalse(t *testing.T) {
 		t.Fatalf("released %v, want nothing for the first input and hi for the second", released)
 	}
 }
+
+// A short form without an output keeps state and sends nothing out: the value
+// its function returns has nowhere to go, and is not an error.
+func TestAShortFormWithoutAnOutputSendsNothingAndCompletes(t *testing.T) {
+	calls := 0
+	relay := ShortRelay("noout", func(in string, _ *Ctx[NoState, string]) (string, bool) {
+		calls++
+		return in, true
+	}, ShortOptions{Codec: Text})
+	run, err := StartLocal(relay, WithLogger(quietLog()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer run.Close()
+	if err := run.Feed("input", []byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if err := run.RunUntilIdle(10 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("the function ran %d times; an input it completes runs once", calls)
+	}
+}

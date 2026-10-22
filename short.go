@@ -77,8 +77,10 @@ type shortFunc[I, S, O any] struct {
 
 func (shortFunc[I, S, O]) Spec() Spec { return Spec{} }
 
+// Run emits what fn returns when it says so and the relay has an output to
+// carry it; a short form without one keeps state and sends nothing out.
 func (f shortFunc[I, S, O]) Run(in I, ctx *Ctx[S, O]) error {
-	if out, ok := f.fn(in, ctx); ok {
+	if out, ok := f.fn(in, ctx); ok && len(ctx.inv.class.outgoing[ctx.inv.node.index]) > 0 {
 		return ctx.Emit(out)
 	}
 	return nil
