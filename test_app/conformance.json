@@ -1,0 +1,194 @@
+{
+  "runtime": "go",
+  "sdk_lang": 8,
+  "command": {
+    "test": "{artifact} {namespace}",
+    "bench": "{artifact} {namespace}"
+  },
+  "artifacts": {
+    "test": [
+      "../../../_build/.target/debug/go_runner"
+    ],
+    "bench": [
+      "../../../_build/.target/release/go_runner"
+    ]
+  },
+  "build": {
+    "test": "scripts/build-go-sdk.sh",
+    "bench": "scripts/build-go-sdk.sh --release"
+  },
+  "connect_timeout_ms": 60000,
+  "transports": [
+    "uds",
+    "quic"
+  ],
+  "dispatch": {
+    "model": "thread-pool",
+    "detail": "A pool of poll goroutines over one context, grown by the core's pool governor when every poller is held inside a tasklet; per-cell exclusivity keeps one Cell on one poller at a time.",
+    "env": {
+      "FLEZHA_WORKER_POOL_SIZE": "base pollers (default: the host's core count)",
+      "FLEZHA_WORKER_POOL_MAX": "the ceiling the pool grows to (default: ten times the base)"
+    }
+  },
+  "toolchain": "go version",
+  "topology_surfaces": [
+    "branch",
+    "merge",
+    "steps",
+    "shorthand",
+    "shorthand_typed_output",
+    "call",
+    "untyped_tree",
+    "schema"
+  ],
+  "deferred": [],
+  "fixtures": {
+    "runner_lifecycle": [
+      "do_nothing",
+      "compare_filter",
+      "bench_echo",
+      "complete_flow"
+    ],
+    "connect_discovery": [
+      "do_nothing"
+    ],
+    "graph_builder": [
+      "sugar_static_cell",
+      "static_cell",
+      "mixed_relay",
+      "hybrid_channel",
+      "merged_input",
+      "transform_chain",
+      "cell_stress",
+      "bench_keyed_nopersist"
+    ],
+    "shorthand": [
+      "sugar_do_nothing",
+      "sugar_store_input",
+      "sugar_named_input",
+      "sugar_steps",
+      "sugar_steps_per_input",
+      "sugar_state_only"
+    ],
+    "liveness": [
+      "wedge_probe"
+    ],
+    "retry_ladder": [
+      "poison_probe",
+      "bounded_mailbox_drop_nothing",
+      "bounded_mailbox_drop_newest",
+      "bounded_mailbox_drop_oldest"
+    ],
+    "state_persistence": [
+      "store_input",
+      "stateful_counter",
+      "coalescing_counter",
+      "persistence_off_counter",
+      "sleeping_counter",
+      "resume_probe",
+      "bench_keyed"
+    ],
+    "effectively_once": [
+      "tier_store",
+      "remote_tier_store",
+      "tier_chain",
+      "checkpoint_store",
+      "checkpoint_batched_store",
+      "bench_checkpoint"
+    ],
+    "cell_timers": [
+      "session_timeout",
+      "timer_cap",
+      "timer_churn"
+    ],
+    "correction_window": [
+      "candle"
+    ],
+    "keyed_channels": [
+      "partition_pass"
+    ],
+    "call_response": [
+      "call_echo",
+      "call_downstream",
+      "call_split",
+      "call_turn"
+    ],
+    "relay_call": [
+      "call_pricing",
+      "call_orders",
+      "call_agent",
+      "call_gateway",
+      "call_tool_session",
+      "call_orders_steps"
+    ],
+    "parts": [
+      "part_echo",
+      "part_echo_steps"
+    ],
+    "partitioned": [
+      "partition_pass",
+      "dynamic_cell",
+      "keyed_loop_steps"
+    ],
+    "dynamic_cell": [
+      "dynamic_cell"
+    ],
+    "pool_wedge": [
+      "wedge_probe"
+    ],
+    "schema_evolution": [
+      "schema_evolution_v1",
+      "schema_evolution_v2"
+    ],
+    "steps": [
+      "spawn_requester",
+      "spawn_hold_requester",
+      "spawn_once_requester",
+      "typed_once_steps",
+      "echo_steps",
+      "commit_block_steps",
+      "sync_durable_steps",
+      "optout_commit_block",
+      "tier_commit_block_steps",
+      "saga_block_steps",
+      "keyed_block_steps",
+      "keyed_saga_steps",
+      "outbox_block_steps",
+      "undo_outbox_steps",
+      "failed_stage_steps",
+      "chat_loop_steps",
+      "chained_steps",
+      "stateless_loop_steps",
+      "keyed_loop_steps",
+      "chat_rewind_steps",
+      "failing_turn_loop_steps",
+      "failing_turn_undo_all_steps",
+      "reply_block_loop_steps",
+      "retry_steps",
+      "branch_steps",
+      "diamond_steps",
+      "bench_chain_1",
+      "bench_chain_4",
+      "bench_chain_16",
+      "bench_chain_optout_4",
+      "bench_loop_steps",
+      "timer_loop_steps",
+      "event_timer_steps",
+      "static_cell_steps"
+    ],
+    "recorded_effects": [
+      "effect_block_steps",
+      "effect_flow"
+    ],
+    "relay_api": [
+      "orders"
+    ],
+    "local_send": [
+      "bench_keyed_nopersist",
+      "store_input",
+      "tier_store",
+      "sugar_steps_per_input"
+    ]
+  },
+  "docs": "docs/internal/sdk/go_sdk.md"
+}
