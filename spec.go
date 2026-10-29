@@ -107,7 +107,10 @@ type (
 // each written as the settings tree's own data: Run "steps" or
 // map[string]any{"steps": map[string]any{"each": "per_input"}}, Durable false,
 // "local" or map[string]any{"local": map[string]any{"sleep_after": 2000}}.
-// Unwritten, the class runs as a flow and keeps its work locally. The core
+// Unwritten, the class runs as a flow and keeps its work locally. A finished
+// instance keeps nothing unless the level sets "keep_finished" to hours, or to
+// true for the controller's window (72 hours by default), so flz relay info
+// can still show its Cells and result. The core
 // reads the tree at registration and refuses a misplaced setting by name.
 type RelaySpec struct {
 	FactoryID     string

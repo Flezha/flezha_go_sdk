@@ -1,6 +1,7 @@
 package flezha
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"slices"
@@ -274,6 +275,31 @@ func TestTheDeclarationKeysAreTheFixtures(t *testing.T) {
 	sort.Strings(got)
 	if !slices.Equal(got, want) {
 		t.Fatalf("the declaration spells %v\nthe fixture lists %v", got, want)
+	}
+}
+
+type keptRelay struct{}
+
+func (keptRelay) Spec() RelaySpec {
+	return RelaySpec{FactoryID: "kept", Durable: map[string]any{"remote": map[string]any{"keep_finished": 24}}}
+}
+
+func (keptRelay) Channels(c *ChannelBuilder) { Into(Input[string](c, "in"), hop{"a"}) }
+
+func TestTheDurabilityReachesTheDeclarationAsWritten(t *testing.T) {
+	spec, err := specOf(keptRelay{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decl struct {
+		Durable any `json:"durable"`
+	}
+	if err := json.Unmarshal(spec.declaration(), &decl); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{"remote": map[string]any{"keep_finished": float64(24)}}
+	if !reflect.DeepEqual(decl.Durable, want) {
+		t.Fatalf("durable is %v, want %v", decl.Durable, want)
 	}
 }
 
