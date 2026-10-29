@@ -74,7 +74,8 @@ func (c *Control) DisablePlugin(name string) (any, error) {
 	return c.Call("PluginManager.disable", name, map[string]any{})
 }
 
-// ListRelays is the relays in this namespace, one row each.
+// ListRelays is the relays in this namespace across the cluster: rows, one
+// row each, and unreachable, the controllers that did not answer.
 func (c *Control) ListRelays() (any, error) { return c.Call("Relay.list") }
 
 // ListPlugins is the plugins enabled in this namespace, one row each.
