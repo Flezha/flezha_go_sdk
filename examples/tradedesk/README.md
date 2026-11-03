@@ -29,8 +29,13 @@ You need a controller running, the `trading` namespace created and a key for it
 ([Open the desk](https://github.com/flezha/flezha/blob/main/docs/public/tutorials/tradedesk/open_the_desk.md) does both).
 
 ```sh
+eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.0)"
 FLEZHA_NAMESPACE_SECRET=<trading key> go run .
 ```
+
+The `eval` line fetches the SDK's prebuilt core library and sets `CGO_LDFLAGS`, as
+the SDK's [Install](../../README.md#install) describes; on a platform it has no
+library for, build one from a checkout ([Building from a checkout](#building-from-a-checkout)).
 
 It blocks until shutdown, which is a SIGTERM or Ctrl-C. The namespace is the
 first argument and defaults to `trading`: `go run . my_desk`. The runner logs
@@ -115,8 +120,8 @@ Relay: order_2
 
 ## Building from a checkout
 
-`github.com/flezha/flezha_go_sdk` is not published yet, and neither is the core
-library it links through cgo, so a C toolchain and a Flezha checkout are needed.
+To run the project against a Flezha checkout instead of the published module, or on a
+platform with no prebuilt core library, a C toolchain and the checkout are needed.
 From the root of the checkout, build the core once:
 
 ```sh
@@ -131,8 +136,7 @@ go work edit -replace github.com/flezha/flezha_go_sdk=/path/to/flezha/sdk/go
 export CGO_LDFLAGS="-L/path/to/flezha/_build/.target/release/go"
 ```
 
-Git ignores the `go.work` file, and once the module is published the step goes
-away and `go run .` is all you need.
+Git ignores the `go.work` file.
 
 ## Where to go next
 

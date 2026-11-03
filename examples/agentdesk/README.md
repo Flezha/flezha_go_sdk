@@ -39,14 +39,16 @@ the session's answer as it is written, and each user has a daily token budget.
 You need Go with a C toolchain, and Docker with Docker Compose.
 
 ```sh
+eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.0)"
 go build
 docker compose up -d --build --wait
 alias flz='docker compose exec controller bin/flz'
 ```
 
-The runner's image copies the binary `go build` built on this machine, which links the
-C library dynamically; one built against a C library newer than Debian 13's may not
-start in it. The runner stops when its standard input closes, and a container's is
+The `eval` line fetches the SDK's prebuilt core library and sets `CGO_LDFLAGS`, as the
+SDK's [Install](../../README.md#install) describes. The runner's image copies the binary
+`go build` built on this machine, which links the C library dynamically; one built
+against a C library newer than Debian 13's may not start in it. The runner stops when its standard input closes, and a container's is
 closed, so the image hands the runner a pipe that stays open. The alias runs `flz`
 inside the controller's container. The runner joins `agents` on its own; the
 controller lists it:
@@ -95,10 +97,10 @@ builds the images and deploys `k8s/agentdesk.yaml` on k3s.
 
 ## Building from a checkout
 
-`github.com/flezha/flezha_go_sdk` is not published yet, and neither is the core
-library it links through cgo, so a Flezha checkout is needed, and the controller's
-image `flezha/flezha:0.1.0` has to be built. From the root of the checkout, build the
-core and the image once:
+The controller's image `flezha/flezha:0.1.0` has to be built, and running the project
+against a Flezha checkout instead of the published module, or on a platform with no
+prebuilt core library, needs the core built there too. From the root of the checkout,
+build the core and the image once:
 
 ```sh
 scripts/build-go-sdk.sh --release
@@ -113,8 +115,7 @@ go work edit -replace github.com/flezha/flezha_go_sdk=/path/to/flezha/sdk/go
 export CGO_LDFLAGS="-L/path/to/flezha/_build/.target/release/go"
 ```
 
-Git ignores the `go.work` file, and once the module and the image are published the
-step goes away and the commands above are all you need.
+Git ignores the `go.work` file.
 
 ## Where to go next
 

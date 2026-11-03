@@ -43,8 +43,8 @@ func TestAMissingLibraryNamesIt(t *testing.T) {
 
 // Every example is a module of its own whose go.mod names the SDK by its
 // released version, so each is vetted and its tests run against this checkout
-// as its README runs it before the module is published: through a workspace
-// that replaces that version with this module.
+// as its README's "Building from a checkout" runs it: through a workspace that
+// replaces that version with this module.
 func TestEveryExampleBuildsAndPassesItsTestsAgainstThisModule(t *testing.T) {
 	sdk, err := filepath.Abs(".")
 	if err != nil {
