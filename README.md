@@ -12,9 +12,14 @@ permanently supported; it is not yet run by the maintainer in a live deployment.
 
 ```sh
 go get github.com/flezha/flezha_go_sdk
+eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.0)"
 ```
 
-The module is not published yet. Until it is, build from a Flezha checkout, as
+The second line downloads the prebuilt core library for your platform (Linux or
+macOS, x64 or arm64), checks it against the release's checksums, and sets
+`CGO_LDFLAGS` to the folder holding it. Run it again in a new shell, or put the
+line it prints in your build environment. On another platform, build the
+library from a Flezha checkout, as
 [`examples/echo`](examples/echo/README.md#building-from-a-checkout) shows.
 
 ## Supported Go versions
@@ -33,7 +38,8 @@ export CGO_LDFLAGS="-L<flezha>/_build/.target/debug/go"
 go test ./...
 ```
 
-Prebuilt libraries for `go get` users come with the first published release.
+Outside a checkout, `cmd/flz-native` (see [Install](#install)) fetches the
+library a release publishes and prints the same line.
 
 ## Writing a relay
 
