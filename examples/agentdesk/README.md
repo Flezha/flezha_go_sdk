@@ -97,10 +97,11 @@ builds the images and deploys `k8s/agentdesk.yaml` on k3s.
 
 ## Building from a checkout
 
-The controller's image `flezha/flezha:0.1.0` has to be built, and running the project
-against a Flezha checkout instead of the published module, or on a platform with no
-prebuilt core library, needs the core built there too. From the root of the checkout,
-build the core and the image once:
+Docker pulls the controller's image `flezha/flezha:0.1.0` from Docker Hub; the
+commands below build it from the checkout instead.
+Running the project against a Flezha checkout instead of the published module, or on a
+platform with no prebuilt core library, needs the core built there. From the root of
+the checkout, build the core and the image once:
 
 ```sh
 scripts/build-go-sdk.sh --release
