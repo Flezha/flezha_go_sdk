@@ -2,7 +2,7 @@
 // cgo, checks it against the release's checksums, and prints the CGO_LDFLAGS
 // line that points Go at it:
 //
-//	eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.0)"
+//	eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.1)"
 //
 // It imports nothing from the SDK, whose packages cannot build until the
 // library is in place.

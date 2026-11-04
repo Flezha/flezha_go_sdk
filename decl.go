@@ -12,7 +12,7 @@ import (
 // Version is this SDK's own released version, stamped into every durable
 // record it writes. Go modules carry no version in go.mod, so this constant is
 // the one source of truth and the release checklist bumps it.
-const Version = "0.1.0"
+const Version = "0.1.1"
 
 // sdkLangGo is the Go SDK's byte in the core's sdk_lang allocation table.
 const sdkLangGo = 8

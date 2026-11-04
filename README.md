@@ -12,7 +12,7 @@ permanently supported; it is not yet run by the maintainer in a live deployment.
 
 ```sh
 go get github.com/flezha/flezha_go_sdk
-eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.0)"
+eval "$(go run github.com/flezha/flezha_go_sdk/cmd/flz-native@v0.1.1)"
 ```
 
 The second line downloads the prebuilt core library for your platform (Linux or
